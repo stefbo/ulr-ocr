@@ -25,7 +25,7 @@ As a first pre-processing step, we scale the image by a factor of 6 using cubic 
 
 The text looks still very stepped, but this is okay for now. We will use patterns and word lists later to fix errors from the character recognition step. Before we pass the image into tesseract, we apply binary thresholding. The threshold value is automatically computed by Otsu's algorithm which is available in OpenCV. Here is how the result looks like:
 
-![input image after thresholding](doc/image/input_image_after_thresholding.png)
+![input image after thresholding](doc/images/input_image_after_thresholding.png)
 
 For us, the image looks less like "good" text, but tesseract internally processes black/white images only.
 
