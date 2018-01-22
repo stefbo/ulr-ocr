@@ -10,7 +10,7 @@ This demo shows two ideas:
 
 One of our input images looks like this.
 
-[input image](doc/images/input_image.png)
+![input image](doc/images/input_image.png)
 
 When doing system level testing for embedded devices, we usually stimulate the device under test and check the result. The result in our case is what is displayed on the device's LCD screen (128x64 px).
 
@@ -23,11 +23,11 @@ Images are not pre-processed by tesseract in any way, except for a thresholding 
 
 As a first step, we scale the image by a factor of 6 using cubic interpolation. This boosts the resolution from around 50 dpi to 300 dpi.
 
-[input image scaled](doc/images/input_image_scaled.png)
+![input image scaled](doc/images/input_image_scaled.png)
 
 The test looks still very stepped, but the this is okay for now. We will use patterns and word lists later to fix errors from the character recognition step. Before we pass the image into tesseract, we use binary thresholding. The threshold value is automatically computed by OTSU's algorithm. Here is how the result looks like.
 
-[input image after thresholding](doc/image/input_image_after_thresholding.png)
+![input image after thresholding](doc/image/input_image_after_thresholding.png)
 
 For us, the image looks less like "good" text, but tesseract internally processes black/white images only.
 
@@ -130,4 +130,4 @@ Run
 
 Run the code on the images like this:
 
-   python3 run.py new_highscore.png
+    python3 run.py new_highscore.png
