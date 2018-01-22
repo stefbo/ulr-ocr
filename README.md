@@ -23,7 +23,7 @@ Images are not pre-processed by tesseract in any way, except for a thresholding 
 
 As a first step, we scale the image by a factor of 6 using cubic interpolation. This boosts the resolution from around 50 dpi to 300 dpi.
 
-![input image scaled](doc/images/input_image_scaled.png)
+![input image scaled](doc/images/input_image_scaled.png | width=50%)
 
 The test looks still very stepped, but the this is okay for now. We will use patterns and word lists later to fix errors from the character recognition step. Before we pass the image into tesseract, we use binary thresholding. The threshold value is automatically computed by OTSU's algorithm. Here is how the result looks like.
 
@@ -116,6 +116,24 @@ In the debug output, you will still find `fa/2 iled/2`, but it is now rejected b
 Using a word list is optional and in this case `failed` is still detected, but having a word list makes the result more predictable.
 
 Two errors remain. The incorrect date and the incorrect unit character for per-mille. In both cases I decided both not to push tesseract any further. For the per-mille symbol, I am not even sure if tesseract is trained to recognize it. It seems more reasonable to either substitute `%o` with `‰` in the result or to use another approach, e.g. template matching. The latter is exactly what we do below. The problem with the `5` instead of the `6` might be caused by the poor quality of the input character which has a height of only 5 px.
+
+
+Template matching for ULR text
+-------------------------------
+
+From the [OpenCV documentation](https://docs.opencv.org/2.4/doc/tutorials/imgproc/histograms/template_matching/template_matching.html):
+
+>  Template matching is a technique for finding areas of an image that match (are similar) to a template image (patch).
+
+The nice thing about template matching is its simplicity. In our system testing context, it is a good choice to detect icons or alike. In our case, we use it to "recognize" individual characters like our `‰` symbol or the sequence `µg/L`.
+
+To apply template matching, we have to create the patches. In our case, we have to of them. One for the `‰` and another one for the `µg/L`:
+
+![ug_L](templates/units/ug_L.png)
+![per-mille](templates/units/per-mille.png)
+
+Using these patterns is then a matter of a few OpenCV calls. One to compute the "similarity" with the pattern and another one to find a minimum. See the source code for details.
+
 
 Installation
 ------------
