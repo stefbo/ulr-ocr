@@ -1,14 +1,12 @@
 This demo is showing how to use OpenCV, tesseract and Python to extract **ultra low resolution (ULR) text** from images. In our case, the X-height is as small as 8 px without any anti-aliasing. The use case for this is system level testing of embedded devices.
 
-Tesseract was originally written to do OCR on high-resolution images like scanned book pages and it does very well. But if you try to use it for screen text the first time, you are immediately frustrated, because it really
-does not work. And for ULR test, the outcome is even worst. The problem becomes more complicated by the fact that
-tesseract is not exactly trivial. First, there are dozens of configuration options which can only be understand by looking at the code and second, tesseract has some mechanism like *rejection*, which can lead to unexpected results.
+[Tesseract](https://en.wikipedia.org/wiki/Tesseract_(software)) was originally written to do object character recognition (OCR) on high-resolution images like scanned pages and it does very well in this domain. But if you try to use it for low resolution text, like screen text, the first time, you are immediately frustrated. It simply does not work. And for ULR text, the outcome is even worse. The problem becomes more complicated by the fact that tesseract is not exactly trivial. First, there are dozens of configuration options which can only be understand by looking at the code and second, tesseract has some mechanism like *rejection*, which can lead to unexpected results.
 
-This demo shows two ideas:
+This demo shows two things:
 - How to use tesseract for ULR text.
 - What to do if tesseract fails ... and in some cases it does. Using simpler techniques like *template matching* makes more sense then.
 
-One of our input images looks like this.
+One of our input images looks like this. See the `doc/images` directory for another example.
 
 ![input image](doc/images/input_image.png)
 
@@ -17,15 +15,15 @@ When doing system level testing for embedded devices, we usually stimulate the d
 Tesseract for ULR text
 ----------------------
 
-As mentioned before, tesseract was written for scanned pages and these usually have very high resolution, say 300 dpi. That is why any attempt to pass ULR text images to tesseract is doomed to fail. It simply not what tesseract is made for. In the best case, tesseract rejects all the text, because it considers it noise.
+As mentioned before, tesseract was written for scanned pages and these usually have very high resolution, say 300 dpi. That is why any attempt to pass ULR text images to tesseract is doomed to fail. It simply is not what tesseract is made for. In the best case, tesseract rejects all the text, because it considers it noise.
 
-Images are not pre-processed by tesseract in any way, except for a thresholding step which converts the image to black/white. But, as a rule of thumb, OCR quality of the result is usually better by passing a black/white image to tesseract.
+You should always keep in mind that tesseract does *not* pre-process images in any way, except for a thresholding step which converts the image to black/white. But, as a rule of thumb, OCR quality of the result is usually better by passing a black/white image to tesseract.
 
-As a first step, we scale the image by a factor of 6 using cubic interpolation. This boosts the resolution from around 50 dpi to 300 dpi.
+As a first pre-processing step, we scale the image by a factor of 6 using cubic interpolation. This boosts the resolution from around 50 dpi to 300 dpi and at the same time smooths the characters edges.
 
-![input image scaled](doc/images/input_image_scaled.png | width=50%)
+![input image scaled](doc/images/input_image_scaled.png)
 
-The test looks still very stepped, but the this is okay for now. We will use patterns and word lists later to fix errors from the character recognition step. Before we pass the image into tesseract, we use binary thresholding. The threshold value is automatically computed by OTSU's algorithm. Here is how the result looks like.
+The text looks still very stepped, but this is okay for now. We will use patterns and word lists later to fix errors from the character recognition step. Before we pass the image into tesseract, we apply binary thresholding. The threshold value is automatically computed by Otsu's algorithm which is available in OpenCV. Here is how the result looks like:
 
 ![input image after thresholding](doc/image/input_image_after_thresholding.png)
 
@@ -41,9 +39,9 @@ So, lets feed tesseract with out scaled and thresholded image. Without any addit
 
     %o
 
-Well, not that bad, but it contains some errors which could really cause problems in automated testing. First, the date is incorrect. There is a `5` in the result instead of a `6`. The other incorrect errors are `%o` instead of the per-mill symbol and instead of `failed`, the two words `fa` and `iled` where recognized.
+Well, not that bad, but it contains some errors which could really cause problems in automated testing. First, the date is incorrect. There is a `5` in the result instead of a `6`. The other errors are `%o` instead of the per-mille symbol and instead of `failed`, the two words `fa` and `iled` where recognized. Hmm.
 
-Okay better understand what went wrong with the additional space, let's look at the intermediate results from tesseract. For this, create a file with name `config.txt` and insert the following lines:
+Okay, to better understand what went wrong with the additional space, let's look at the intermediate results from tesseract. For this, create a file with name `config.txt` and insert the following lines:
 
     tessedit_rejection_debug 1
     debug_fix_space_level 2
@@ -85,9 +83,9 @@ Run tesseract again and add the `config.txt` as last argument to the command lin
 	TESTED (0): "failed/8 "
 	RETURNED (2): "fa/8 iled/2 "
 
-For now, the first and the last line are most interesting. From the first line, we can realize that tesseract what indeed able to recognize `failed`. But after some magic, we can see in the last line that tesseract decided not to choose `failed` as the result, but instead `fa iled`. That seem completely weird at first, but it is exactly how tesseract works internally. The actual character recognition is only one part of the text recognition story. After the character recognition, tesseract permutes the results to find better matches in case the character recognition worked poorly. And this is what happened here. The result from character recognition is `failed`, but `fa iled` had a better score in the end. So, how to tell tesseract what we want?
+For now, the first and the last line are most interesting. From the first line, we can realize that tesseract was indeed able to recognize `failed`. But after some magic, we can see in the last line that tesseract decided not to choose `failed` as the result, but instead `fa iled`. That seem completely weird at first, but it is exactly how tesseract works internally. The actual character recognition is only one part of the text recognition story. After the character recognition, tesseract permutes the results to find better matches in case the character recognition worked poorly. And this is what happened here. The result from character recognition is `failed`, but `fa iled` had a better score in the end. So, how to tell tesseract what we want?
 
-We have two options. The first option is to play around with tesseract's parameters for "fixing" spaces. But that requires a lot of knowledge about tesseract's internals. The second one is to add provide a so-called user dictionary and to disable some internal choices like in the `fa iled` case. The number 8 in `fa/8 iled/2` indicates that `fa` was chosen because it is in the so-called system dictionary. By disabling it and providing an explicit list of expected words - what is usually the case for embedded devices - we can the choices made by tesseract much more predictable.
+We have two options. The first option is to play around with tesseract's parameters for "fixing" spaces. But that requires a lot of knowledge about tesseract's internals. The second one is to provide a so-called user dictionary and to disable some internal choices like in the `fa iled` case. The number 8 in `fa/8 iled/2` indicates that `fa` was chosen because it is in the so-called system dictionary. By disabling it and providing an explicit list of expected words - what is usually possible for embedded devices - we can make the choices made by tesseract much more predictable.
 
 Create a file called `words.txt` and add all the expected words:
 
@@ -115,24 +113,24 @@ In the debug output, you will still find `fa/2 iled/2`, but it is now rejected b
 
 Using a word list is optional and in this case `failed` is still detected, but having a word list makes the result more predictable.
 
-Two errors remain. The incorrect date and the incorrect unit character for per-mille. In both cases I decided both not to push tesseract any further. For the per-mille symbol, I am not even sure if tesseract is trained to recognize it. It seems more reasonable to either substitute `%o` with `‰` in the result or to use another approach, e.g. template matching. The latter is exactly what we do below. The problem with the `5` instead of the `6` might be caused by the poor quality of the input character which has a height of only 5 px.
+Two errors remain. The incorrect date and the incorrect unit character for per-mille. In both cases I decided both not to push tesseract any further. For the per-mille symbol, I am not even sure if tesseract is trained to recognize it. It seems more reasonable to either substitute `%o` with `‰` in the result or to use another approach, e.g. template matching. The latter is exactly what we do below. The problem with the `5` instead of the `6` might be caused by the poor quality of the input character which has a height of only 5 px. We simply do not use it, but it would be another candidate for template matching.
 
 
 Template matching for ULR text
--------------------------------
+------------------------------
 
 From the [OpenCV documentation](https://docs.opencv.org/2.4/doc/tutorials/imgproc/histograms/template_matching/template_matching.html):
 
 >  Template matching is a technique for finding areas of an image that match (are similar) to a template image (patch).
 
-The nice thing about template matching is its simplicity. In our system testing context, it is a good choice to detect icons or alike. In our case, we use it to "recognize" individual characters like our `‰` symbol or the sequence `µg/L`.
+The nice thing about template matching is its simplicity. In our system testing context, it is a good choice to detect icons or alike. Here, we exercise it to "recognize" individual characters like our `‰` symbol or the sequence `µg/L`.
 
-To apply template matching, we have to create the patches. In our case, we have to of them. One for the `‰` and another one for the `µg/L`:
+To apply template matching, we have to create the patches as individual image files. In our case, we have two of them. One for the `‰` and another one for the `µg/L`:
 
 ![ug_L](templates/units/ug_L.png)
 ![per-mille](templates/units/per-mille.png)
 
-Using these patterns is then a matter of a few OpenCV calls. One to compute the "similarity" with the pattern and another one to find a minimum. See the source code for details.
+Using these patterns is then just a matter of a few OpenCV calls. One to compute the "similarity" with the pattern and another one to find a minimum. See the source code for details.
 
 
 Installation
