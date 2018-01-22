@@ -1,0 +1,4 @@
+tessedit_rejection_debug 1
+debug_fix_space_level 2
+load_freq_dawg 0
+load_system_dawg 0
